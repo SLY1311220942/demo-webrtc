@@ -34,7 +34,7 @@ var socket_onmessage = function (event) {
 }
 
 var socket = new WebSocket("ws://192.168.0.13:8080/websocket");
-// var socket = new WebSocket("ws://127.0.0.1:8080/cat/index");
+// var socket = new WebSocket("ws://39.100.248.39:8090/websocket");
 
 socket.onopen = function () {
     console.log("WebSocket,建立连接成功");
