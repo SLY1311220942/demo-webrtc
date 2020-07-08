@@ -9,11 +9,15 @@ var callbackRemoteVideo = null;
 var callbackLocalVideo = null;
 var localStream = null;//本地流存储对象
 //兼容不同浏览器客户端之间的连接
-var PeerConnection = (window.PeerConnection || window.webkitPeerConnection00 || window.webkitRTCPeerConnection || window.mozRTCPeerConnection);
+var PeerConnection = (window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection);
+
+
 
 //兼容不同浏览器获取到用户媒体对象
-var getUserMedia
-getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia || navigator.mediaDevices.getUserMedia);
+var getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
+if(!getUserMedia && navigator.mediaDevices){
+    getUserMedia = navigator.mediaDevices.getUserMedia;
+}
 
 //兼容不同浏览器
 var SessionDescription = (window.RTCSessionDescription || window.mozRTCSessionDescription || window.webkitRTCSessionDescription);
@@ -45,14 +49,16 @@ var createPcAndDataChannel = function (callbackMessageImpl, callbackRemoteVideoI
     var nowChannel = {"pc": null, "localChannel": null, "stream": null};
     //创建PeerConnection实例
     nowChannel.pc = new PeerConnection();
-    nowChannel.localChannel = nowChannel.pc.createDataChannel(localChannelOptions);//本地通道,本地通道接收由远程通道发送过来的数据
+    //本地通道,本地通道接收由远程通道发送过来的数据
+    nowChannel.localChannel = nowChannel.pc.createDataChannel(localChannelOptions);
     nowChannel.localChannel.onerror = datachannel_error;
     nowChannel.localChannel.onopen = datachannel_open;
     nowChannel.localChannel.onclose = datachannel_close;
     nowChannel.localChannel.onmessage = datachannel_message;
+    nowChannel.pc.onicecandidate = pc_icecandidate;
     nowChannel.pc.ondatachannel = pc_datachannel;
     nowChannel.pc.onaddstream = pc_addstream;
-    nowChannel.pc.onicecandidate = pc_icecandidate;
+
     callbackMessage = callbackMessageImpl;
     callbackRemoteVideo = callbackRemoteVideoImpl;
     return nowChannel;
@@ -61,7 +67,8 @@ var createPcAndDataChannel = function (callbackMessageImpl, callbackRemoteVideoI
 //客户端连接回调方法
 var downloadFileData = {'maxsize': 0, 'filename': null, 'data': []};//下载文件数据预存
 var pc_datachannel = function (event) {
-    receiveChannel = event.channel;//远端的数据通道,注意,这个通道也是可以直接使用的,不过由于它是远端的数据通道,响应的消息会出现在 localChannel.onmessage里面,而不是 receiveChannel.onmessage
+    //远端的数据通道,注意,这个通道也是可以直接使用的,不过由于它是远端的数据通道,响应的消息会出现在 localChannel.onmessage里面,而不是 receiveChannel.onmessage
+    receiveChannel = event.channel;
     receiveChannel.onmessage = function (event) {
         var msg = null
         try {
@@ -73,27 +80,32 @@ var pc_datachannel = function (event) {
                 for (var i = 0; i < downloadFileData.data.length; i++) {
                     doneSize += downloadFileData.data[i].byteLength;
                 }
-                if (downloadFileData.maxsize <= doneSize) {//如果已完成长度 <= 最大长度,则代表传输结束
+                if (downloadFileData.maxsize <= doneSize) {
+                    //如果已完成长度 <= 最大长度,则代表传输结束
                     var fileBlob = new Blob(downloadFileData.data);
                     var anchor = document.createElement("a");
                     anchor.href = URL.createObjectURL(fileBlob);
                     anchor.download = downloadFileData.filename;
                     anchor.click();
-                    downloadFileData = {'maxsize': 0, 'filename': null, 'data': []};//初始化
+                    //初始化
+                    downloadFileData = {'maxsize': 0, 'filename': null, 'data': []};
                 }
             }
             return;
         }
-        if (msg.type == 'text') {//接收的是文字传送,当作是聊天文字
+        if (msg.type == 'text') {
+            //接收的是文字传送,当作是聊天文字
             callbackMessage(msg);
-        } else if (msg != null && msg.type == 'file') {//接收到了对方发来的即将要传送的文件信息
+        } else if (msg != null && msg.type == 'file') {
+            //接收到了对方发来的即将要传送的文件信息
             downloadFileData.maxsize = msg.data.fileSize;
             downloadFileData.filename = msg.data.fileName;
         }
     }
 };
 
-var pc_addstream = function (event) {//如果检测到媒体流连接到本地，将其绑定到一个video标签上输出
+var pc_addstream = function (event) {
+    //如果检测到媒体流连接到本地，将其绑定到一个video标签上输出
     callbackRemoteVideo(event);
 };
 
@@ -108,7 +120,8 @@ var pc_icecandidate = function (event) {//发送ICE候选到其他客户端
     if (event.candidate !== null) {
         signallingParam.value.data = {"candidate": event.candidate};
         signallingParam.value.event = "_ice_candidate";
-        signallingParam.temp = event.target["remoteUserId"];//获取创建时指定它将会与哪个用户连接,如果没有 就没有
+        //获取创建时指定它将会与哪个用户连接,如果没有 就没有
+        signallingParam.temp = event.target["remoteUserId"];
         socket.sendJson(signallingParam);
     }
 };
@@ -215,6 +228,11 @@ var closeChannel = function (webRtcs) {
     }
 }
 
+//关闭流
+var closeStream = function (webRtcs) {
+    closeRemoteChannelStream(webRtcs);
+}
+
 //关闭远端流
 var closeRemoteChannelStream = function (webRtcs) {
     for (var i = 0; i < webRtcs.length; i++) {
@@ -243,3 +261,4 @@ var closeLocalStream = function () {
         localStream = null;
     }
 }
+
