@@ -9,7 +9,7 @@ var callbackRemoteVideo = null;
 var callbackLocalVideo = null;
 var localStream = null;//本地流存储对象
 //兼容不同浏览器客户端之间的连接
-var PeerConnection = (window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection);
+//var PeerConnection = (window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection);
 
 
 
@@ -40,6 +40,15 @@ var datachannel_message = function (event) {
     console.log(event.data);
 }
 
+
+var servers = {
+    "iceServers": [
+        {urls: "stun:39.100.248.39:3478", username: "stun", credential: "123456"},
+        {urls: "turn:39.100.248.39:3478", username: "stun", credential: "123456"}
+    ]
+};
+
+
 /**
  * 创建webrtc
  * 参数1接收到文字消息处理回调实现
@@ -48,7 +57,7 @@ var datachannel_message = function (event) {
 var createPcAndDataChannel = function (callbackMessageImpl, callbackRemoteVideoImpl) {
     var nowChannel = {"pc": null, "localChannel": null, "stream": null};
     //创建PeerConnection实例
-    nowChannel.pc = new PeerConnection();
+    nowChannel.pc = new RTCPeerConnection(servers);
     //本地通道,本地通道接收由远程通道发送过来的数据
     nowChannel.localChannel = nowChannel.pc.createDataChannel(localChannelOptions);
     nowChannel.localChannel.onerror = datachannel_error;
