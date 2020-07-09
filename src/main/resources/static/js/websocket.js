@@ -32,9 +32,11 @@ var socket_onmessage = function (event) {
         EXIT_GROUP_FIVE(message);
     }
 }
-var socket = new WebSocket("wss://192.168.0.16:8080/websocket");
+
+//var socket = new WebSocket("wss://192.168.0.102:8080/websocket");
+var socket = new WebSocket("wss://192.168.0.19:8080/websocket");
 //var socket = new WebSocket("ws://192.168.0.16:8080/websocket");
-// var socket = new WebSocket("ws://39.100.248.39:8090/websocket");
+//var socket = new WebSocket("wss://39.100.248.39:8090/websocket");
 
 socket.onopen = function () {
     console.log("WebSocket,建立连接成功");
